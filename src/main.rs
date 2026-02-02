@@ -40,8 +40,8 @@ fn main() {
         Some(Commands::HelloWorld { number }) => {
             let mut print_count = 1;
 
-            if let Some(number) = &number {
-                print_count = *number;
+            if let Some(selected_number) = &number {
+                print_count = *selected_number;
             }
 
             // Remove mutability
