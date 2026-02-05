@@ -1,4 +1,6 @@
+use std::fs;
 use clap::{Parser, Subcommand};
+use zlib_rs::{InflateConfig, compress_bound, decompress_slice};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -24,6 +26,7 @@ enum Commands {
 }
 
 fn main() {
+    /*
     let cli = Cli::parse();
 
     if let Some(name) = cli.name.as_deref() {
@@ -53,4 +56,20 @@ fn main() {
         }
         None => {}
     }
+    */
+
+    let bytes: Vec<u8> = fs::read("./src/example/blob").expect("Something went wrong");
+    let input: &[u8] = &bytes;
+    let mut decompressed_buf = vec![0u8; 1247];
+
+    let (decompressed, rc) = decompress_slice(&mut decompressed_buf, input, InflateConfig::default());
+    let output_result = str::from_utf8(decompressed);
+
+    if let Ok(output) = output_result {
+        println!("{}", output);
+    }
+
+
+    //let byte_string = 
+    //let mut decompressed_buf = vec![0u8, compress_bound(bytes.len())]
 }
