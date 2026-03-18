@@ -1,4 +1,4 @@
-use std::fs;
+use std::{env, fs, path::Path};
 use zlib_rs::{InflateConfig, decompress_slice};
 
 pub fn decompress_blob(blob_path: String) -> String {
@@ -43,6 +43,25 @@ pub fn decompress_blob(blob_path: String) -> String {
     return output_result;
 }
 
-pub fn compress_blob() {
+pub fn compress_blob(path_str: String) {
+    let working_directory = env::current_dir().expect("Couldn't find working directory");
+    let target_path = Path::new(&path_str);
+    let absolute_target_path = working_directory.join(target_path);
 
+    if absolute_target_path.is_dir() {
+        println!("Adding all files in directory: {}", absolute_target_path.display());
+
+        let children = absolute_target_path.read_dir().expect("Error searching directory");
+
+        for path in children {
+            let Ok(valid_path) = path else { continue };
+            let current_path = valid_path.path();
+            
+            if current_path.is_dir() {
+                compress_blob(current_path.display().to_string());
+            }
+        }
+    } else {
+        println!("Adding file: {}", absolute_target_path.display());
+    }
 }

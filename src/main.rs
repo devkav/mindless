@@ -1,13 +1,18 @@
+mod util;
+mod commands;
+
 use clap::{Parser, Subcommand};
-mod blob;
+use util::blob;
+use commands::save;
+
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
     name: Option<String>,
 
-    #[arg(short, long, value_name = "FILE")]
-    config: Option<std::path::PathBuf>,
+    // #[arg(short, long, value_name = "FILE")]
+    // config: Option<std::path::PathBuf>,
 
     #[arg(short, long, action = clap::ArgAction::Count)]
     debug: u8,
@@ -24,6 +29,9 @@ enum Commands {
     },
     DbgDecompress {
         path: String,
+    },
+    Save {
+        message: String
     }
 }
 
@@ -60,6 +68,7 @@ fn main() {
             let decompressed = blob::decompress_blob(path);
             println!("{}", decompressed)
         }
+        Some(Commands::Save { message }) => save(message),
         None => {}
     }
 }
