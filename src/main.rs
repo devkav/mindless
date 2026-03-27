@@ -5,6 +5,8 @@ use clap::{Parser, Subcommand};
 use util::blob;
 use commands::save;
 
+use crate::commands::init;
+
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -32,7 +34,8 @@ enum Commands {
     },
     Save {
         message: String
-    }
+    },
+    Init {}
 }
 
 fn main() {
@@ -42,11 +45,13 @@ fn main() {
         println!("Value for name: {name}");
     }
 
+    /*
     match cli.debug {
         0 => println!("Debug mode is off"),
         1 => println!("Debug mode is kind of on"),
         _ => println!("Debug mode is fully on"),
     }
+    */
 
     match cli.command {
         Some(Commands::HelloWorld { number }) => {
@@ -69,6 +74,7 @@ fn main() {
             println!("{}", decompressed)
         }
         Some(Commands::Save { message }) => save(message),
+        Some(Commands::Init {}) => init(),
         None => {}
     }
 }
