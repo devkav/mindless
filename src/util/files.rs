@@ -1,5 +1,7 @@
-use std::{env, path::{PathBuf}};
-use crate::util::constants::MINDLESS_DIR_NAME;
+use std::{env, fs::{self}, path::PathBuf};
+use glob::Pattern;
+
+use crate::util::constants::{MINDLESS_DIR_NAME, NEVERMIND_FILE_NAME};
 
 
 pub fn get_root() -> Option<PathBuf> {
@@ -27,7 +29,34 @@ pub fn get_root() -> Option<PathBuf> {
 }
 
 
-pub fn get_tracked_files(directory: Option<PathBuf>) -> Result<Vec<PathBuf>, &'static str> {
+pub fn get_nevermind_patterns(mindless_root: PathBuf) -> Vec<Pattern> {
+    let mut patterns: Vec<Pattern> = Vec::new();
+    let nevermind_file_path: PathBuf = mindless_root.join(NEVERMIND_FILE_NAME);
+
+    if !nevermind_file_path.exists() || !nevermind_file_path.is_file() {
+        return patterns;
+    }
+
+    let error_msg = format!("nevermind file at {} could not be read", nevermind_file_path.display());
+    let content = fs::read_to_string(nevermind_file_path).expect(&error_msg);
+
+    for line in content.lines() {
+        let sanitized_pattern = line.trim()
+            .trim_start_matches("/")
+            .trim_end_matches("/");
+        let sanitized_pattern = format!("*/{}", sanitized_pattern);
+        let pattern = Pattern::new(&sanitized_pattern);
+
+        if let Ok(valid_pattern) = pattern {
+            patterns.push(valid_pattern);
+        }
+    }
+
+    return patterns;
+}
+
+
+pub fn get_tracked_files(directory: Option<PathBuf>, nevermind_patterns: &Vec<Pattern>) -> Result<Vec<PathBuf>, &'static str> {
     let directory: PathBuf = match directory {
         Some(valid_directory) => valid_directory,
         None => match get_root() {
@@ -45,8 +74,22 @@ pub fn get_tracked_files(directory: Option<PathBuf>) -> Result<Vec<PathBuf>, &'s
         let Ok(child_path) = child else { continue };
         let child_path = child_path.path();
 
+        let mut ignore = false;
+        let path_str = child_path.to_str().expect("Something went wrong while reading file path");
+
+        for pattern in nevermind_patterns {
+            if pattern.matches(path_str) {
+                ignore = true;
+                break;
+            }
+        }
+
+        if ignore {
+            continue;
+        }
+
         if child_path.is_dir() {
-            let descendants_result = get_tracked_files(Some(child_path));
+            let descendants_result = get_tracked_files(Some(child_path), nevermind_patterns);
 
             if let Ok(descendants) = descendants_result {
                 files.extend(descendants);
@@ -59,3 +102,4 @@ pub fn get_tracked_files(directory: Option<PathBuf>) -> Result<Vec<PathBuf>, &'s
 
     return Ok(files);
 }
+

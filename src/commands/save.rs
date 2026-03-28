@@ -1,4 +1,4 @@
-use crate::util::{files::get_tracked_files};
+use crate::util::files::{get_nevermind_patterns, get_root, get_tracked_files};
 
 pub fn save(message: String) {
     // TODO: Respect .nevermind (gitignore equivalent)
@@ -7,7 +7,13 @@ pub fn save(message: String) {
     
     // compress_blob(".".to_string());
 
-    let tracked_files = get_tracked_files(None).unwrap();
+    let Some(mindless_root) = get_root() else {
+        println!("No mindless project found.");
+        return;
+    };
+
+    let nevermind_patterns = get_nevermind_patterns(mindless_root);
+    let tracked_files = get_tracked_files(None, &nevermind_patterns).unwrap();
 
     for file in tracked_files {
         println!("{}", file.display());
