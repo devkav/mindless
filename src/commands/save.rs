@@ -1,4 +1,4 @@
-use crate::util::{blob::compress_blob, files::get_tracked_files};
+use crate::util::{files::get_tracked_files};
 
 pub fn save(message: String) {
     // TODO: Respect .nevermind (gitignore equivalent)

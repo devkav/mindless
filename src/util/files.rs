@@ -1,5 +1,4 @@
 use std::{env, path::{PathBuf}};
-
 use crate::util::constants::MINDLESS_DIR_NAME;
 
 
@@ -29,37 +28,34 @@ pub fn get_root() -> Option<PathBuf> {
 
 
 pub fn get_tracked_files(directory: Option<PathBuf>) -> Result<Vec<PathBuf>, &'static str> {
-    let directory: PathBuf = if directory.is_none() {
-        let root = get_root();
-
-        if root.is_none() {
-            return Err("mindless project root not found.");
+    let directory: PathBuf = match directory {
+        Some(valid_directory) => valid_directory,
+        None => match get_root() {
+            Some(root_directory) => root_directory,
+            None => {
+                return Err("mindless project root not found.");
+            }
         }
-
-        root.unwrap()
-    } else {
-        directory.unwrap()
     };
 
     let mut files: Vec<PathBuf> = Vec::new();
     let children = directory.read_dir().expect("Error searching directory");
 
     for child in children {
-        let Ok(valid_path) = child else { continue };
-        let current_path = valid_path.path();
+        let Ok(child_path) = child else { continue };
+        let child_path = child_path.path();
 
-        if current_path.is_dir() {
-            let descendants_result = get_tracked_files(Some(current_path));
+        if child_path.is_dir() {
+            let descendants_result = get_tracked_files(Some(child_path));
 
             if let Ok(descendants) = descendants_result {
                 files.extend(descendants);
             }
-        } else if current_path.is_file() {
+        } else if child_path.is_file() {
             // TODO: Check if file is in .nevermind
-            files.push(current_path);
+            files.push(child_path);
         }
     }
-
 
     return Ok(files);
 }

@@ -1,7 +1,7 @@
 mod util;
 mod commands;
 
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
 use util::blob;
 use commands::save;
 
@@ -25,10 +25,6 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    HelloWorld {
-        #[arg(short, long)]
-        number: Option<u8>,
-    },
     DbgDecompress {
         path: String,
     },
@@ -54,20 +50,6 @@ fn main() {
     */
 
     match cli.command {
-        Some(Commands::HelloWorld { number }) => {
-            let mut print_count = 1;
-
-            if let Some(selected_number) = &number {
-                print_count = *selected_number;
-            }
-
-            // Remove mutability
-            let print_count = print_count;
-
-            for _ in 0..print_count {
-                println!("Hello world!");
-            }
-        }
         Some(Commands::DbgDecompress { path }) => {
             println!("{}", path);
             let decompressed = blob::decompress_blob(path);
@@ -75,6 +57,8 @@ fn main() {
         }
         Some(Commands::Save { message }) => save(message),
         Some(Commands::Init {}) => init(),
-        None => {}
+        None => {
+            let _ = Cli::command().print_help();
+        }
     }
 }
