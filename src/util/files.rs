@@ -28,18 +28,38 @@ pub fn get_root() -> Option<PathBuf> {
 }
 
 
-pub fn get_tracked_files() -> Vec<PathBuf> {
-    let files: Vec<PathBuf> = Vec::new();
+pub fn get_tracked_files(directory: Option<PathBuf>) -> Result<Vec<PathBuf>, &'static str> {
+    let directory: PathBuf = if directory.is_none() {
+        let root = get_root();
 
-    // TODO
-    let root_result = get_root();
+        if root.is_none() {
+            return Err("mindless project root not found.");
+        }
 
-    if root_result.is_none() {
-        // TODO: Fix err
-        //return Err("mindless project root not found.");
+        root.unwrap()
+    } else {
+        directory.unwrap()
+    };
+
+    let mut files: Vec<PathBuf> = Vec::new();
+    let children = directory.read_dir().expect("Error searching directory");
+
+    for child in children {
+        let Ok(valid_path) = child else { continue };
+        let current_path = valid_path.path();
+
+        if current_path.is_dir() {
+            let descendants_result = get_tracked_files(Some(current_path));
+
+            if let Ok(descendants) = descendants_result {
+                files.extend(descendants);
+            }
+        } else if current_path.is_file() {
+            // TODO: Check if file is in .nevermind
+            files.push(current_path);
+        }
     }
 
-    let root = root_result.unwrap();
 
-    return files;
+    return Ok(files);
 }
