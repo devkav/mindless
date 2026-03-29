@@ -29,8 +29,11 @@ pub fn get_root() -> Option<PathBuf> {
 }
 
 
-pub fn get_nevermind_patterns(mindless_root: PathBuf) -> Vec<Pattern> {
-    let mut patterns: Vec<Pattern> = Vec::new();
+pub fn get_nevermind_patterns(mindless_root: &PathBuf) -> Vec<Pattern> {
+    // Always ignore .mindless directory
+    let sanitized_default_pattern = format!("*/{}", MINDLESS_DIR_NAME);
+    let default_pattern = Pattern::new(&sanitized_default_pattern).expect("Something went wrong while creating default pattern");
+    let mut patterns: Vec<Pattern> = vec![default_pattern];
     let nevermind_file_path: PathBuf = mindless_root.join(NEVERMIND_FILE_NAME);
 
     if !nevermind_file_path.exists() || !nevermind_file_path.is_file() {
@@ -56,15 +59,14 @@ pub fn get_nevermind_patterns(mindless_root: PathBuf) -> Vec<Pattern> {
 }
 
 
-pub fn get_tracked_files(directory: Option<PathBuf>, nevermind_patterns: &Vec<Pattern>) -> Result<Vec<PathBuf>, &'static str> {
-    let directory: PathBuf = match directory {
+pub fn get_tracked_files(
+    directory: Option<&PathBuf>,
+    nevermind_patterns: &Vec<Pattern>,
+    mindless_root: &PathBuf
+) -> Vec<PathBuf> {
+    let directory: &PathBuf = match directory {
         Some(valid_directory) => valid_directory,
-        None => match get_root() {
-            Some(root_directory) => root_directory,
-            None => {
-                return Err("mindless project root not found.");
-            }
-        }
+        None => &mindless_root
     };
 
     let mut files: Vec<PathBuf> = Vec::new();
@@ -89,17 +91,14 @@ pub fn get_tracked_files(directory: Option<PathBuf>, nevermind_patterns: &Vec<Pa
         }
 
         if child_path.is_dir() {
-            let descendants_result = get_tracked_files(Some(child_path), nevermind_patterns);
-
-            if let Ok(descendants) = descendants_result {
-                files.extend(descendants);
-            }
+            let descendants = get_tracked_files(Some(&child_path), nevermind_patterns, &mindless_root);
+            files.extend(descendants);
         } else if child_path.is_file() {
             // TODO: Check if file is in .nevermind
             files.push(child_path);
         }
     }
 
-    return Ok(files);
+    return files;
 }
 

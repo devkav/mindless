@@ -1,7 +1,11 @@
-use std::{env, fs, path::Path};
-use zlib_rs::{InflateConfig, decompress_slice};
+use std::{fs, path::{PathBuf}};
+use zlib_rs::{DeflateConfig, InflateConfig, compress_bound, compress_slice, decompress_slice};
+
+use crate::util::constants::MINDLESS_DIR_NAME;
 
 pub fn decompress_blob(blob_path: String) -> String {
+    // TODO: Prob needs a rewrite/TODO to fix error handling
+
     let config = InflateConfig::default();
 
     let bytes: Vec<u8> = fs::read(blob_path).expect("Something went wrong while opening blob");
@@ -43,25 +47,27 @@ pub fn decompress_blob(blob_path: String) -> String {
     return output_result;
 }
 
-pub fn compress_blob(path_str: String) {
-    let working_directory = env::current_dir().expect("Couldn't find working directory");
-    let target_path = Path::new(&path_str);
-    let absolute_target_path = working_directory.join(target_path);
+pub fn compress_file(file_path: &PathBuf, mindless_root: &PathBuf) {
+    let input = fs::read(file_path);
 
-    if absolute_target_path.is_dir() {
-        println!("Adding all files in directory: {}", absolute_target_path.display());
+    match input {
+        Ok(file_bytes) => {
+            let mut compressed_buf = vec![0u8; compress_bound(file_bytes.len())];
+            let header = format!("blob {}\0", file_bytes.len());
+            let mut blob = header.into_bytes();
+            blob.extend(&file_bytes);
 
-        let children = absolute_target_path.read_dir().expect("Error searching directory");
+            let (compressed, _) = compress_slice(&mut compressed_buf, &blob, DeflateConfig::default());
 
-        for path in children {
-            let Ok(valid_path) = path else { continue };
-            let current_path = valid_path.path();
-            
-            if current_path.is_dir() {
-                compress_blob(current_path.display().to_string());
-            }
+            // TODO: Add error handling
+            let file_name = file_path.file_name().unwrap().to_str().unwrap();
+            // TODO: Better organization and naming for the files
+            let output_path = mindless_root.join(MINDLESS_DIR_NAME).join(file_name);
+
+            fs::write(output_path, &compressed).expect("error");
+        },
+        Err(_e) => {
+            // TODO
         }
-    } else {
-        println!("Adding file: {}", absolute_target_path.display());
     }
 }
