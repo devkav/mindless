@@ -2,6 +2,7 @@ use std::{env, fs::create_dir};
 
 use crate::util::constants::{MINDLESS_DIR_NAME, OBJECTS_DIR_NAME};
 
+
 pub fn init() {
     let working_directory = env::current_dir().expect("Couldn't find working directory");
     let mindless_directory = working_directory.join(MINDLESS_DIR_NAME);

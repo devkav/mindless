@@ -1,5 +1,6 @@
 use crate::util::{blob::compress_file, files::{get_nevermind_patterns, get_root, get_tracked_files}};
 
+
 pub fn save(message: String) {
     println!("Saving directory state with message: {}", message);
     
