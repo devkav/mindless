@@ -101,4 +101,3 @@ pub fn get_tracked_files(
 
     return files;
 }
-

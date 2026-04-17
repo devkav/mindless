@@ -1,7 +1,9 @@
-use std::{fs, path::{PathBuf}};
+use std::{fs::{self, create_dir}, path::PathBuf};
+use sha2::{Digest, Sha256};
 use zlib_rs::{DeflateConfig, InflateConfig, compress_bound, compress_slice, decompress_slice};
 
-use crate::util::constants::MINDLESS_DIR_NAME;
+use crate::util::{constants::{MINDLESS_DIR_NAME, OBJECTS_DIR_NAME}};
+
 
 pub fn decompress_blob(blob_path: String) -> String {
     // TODO: Prob needs a rewrite/TODO to fix error handling
@@ -47,6 +49,7 @@ pub fn decompress_blob(blob_path: String) -> String {
     return output_result;
 }
 
+
 pub fn compress_file(file_path: &PathBuf, mindless_root: &PathBuf) {
     let input = fs::read(file_path);
 
@@ -59,15 +62,34 @@ pub fn compress_file(file_path: &PathBuf, mindless_root: &PathBuf) {
 
             let (compressed, _) = compress_slice(&mut compressed_buf, &blob, DeflateConfig::default());
 
-            // TODO: Add error handling
-            let file_name = file_path.file_name().unwrap().to_str().unwrap();
-            // TODO: Better organization and naming for the files
-            let output_path = mindless_root.join(MINDLESS_DIR_NAME).join(file_name);
+            let complete_hash = get_hash(&blob);
+            let object_dir_name = &complete_hash[0..2];
+            let file_name = &complete_hash[2..];
 
-            fs::write(output_path, &compressed).expect("error");
+            let object_dir_path= mindless_root
+                .join(MINDLESS_DIR_NAME)
+                .join(OBJECTS_DIR_NAME)
+                .join(object_dir_name);
+
+            if !object_dir_path.exists() {
+                create_dir(&object_dir_path).expect("Something went wrong while creating object directory.");
+            }
+
+            let output_path = object_dir_path.join(file_name);
+            fs::write(output_path, &compressed).expect("Could not write to file");
+
+            // TODO: Add some pretty printing
         },
         Err(_e) => {
             // TODO
         }
     }
+}
+
+
+pub fn get_hash(content: &[u8]) -> String {
+    let hash = Sha256::digest(content);
+    let hash_hex = hex::encode(hash);
+
+    return hash_hex;
 }
