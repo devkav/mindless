@@ -1,8 +1,5 @@
-use std::{fs::{self, create_dir}, path::PathBuf};
-use sha2::{Digest, Sha256};
-use zlib_rs::{DeflateConfig, InflateConfig, compress_bound, compress_slice, decompress_slice};
-
-use crate::util::{constants::{MINDLESS_DIR_NAME, OBJECTS_DIR_NAME}};
+use std::{fs::{self}};
+use zlib_rs::{InflateConfig, decompress_slice};
 
 
 pub fn decompress_file(blob_path: String) -> String {
@@ -50,46 +47,3 @@ pub fn decompress_file(blob_path: String) -> String {
 }
 
 
-pub fn compress_file(object_type: &str, file_path: &PathBuf, mindless_root: &PathBuf) {
-    let input = fs::read(file_path);
-
-    match input {
-        Ok(file_bytes) => {
-            let mut compressed_buf = vec![0u8; compress_bound(file_bytes.len())];
-            let header = format!("{} {}\0", object_type, file_bytes.len());
-            let mut blob = header.into_bytes();
-            blob.extend(&file_bytes);
-
-            let (compressed, _) = compress_slice(&mut compressed_buf, &blob, DeflateConfig::default());
-
-            let complete_hash = get_hash(&blob);
-            let object_dir_name = &complete_hash[0..2];
-            let file_name = &complete_hash[2..];
-
-            let object_dir_path= mindless_root
-                .join(MINDLESS_DIR_NAME)
-                .join(OBJECTS_DIR_NAME)
-                .join(object_dir_name);
-
-            if !object_dir_path.exists() {
-                create_dir(&object_dir_path).expect("Something went wrong while creating object directory.");
-            }
-
-            let output_path = object_dir_path.join(file_name);
-            fs::write(output_path, &compressed).expect("Could not write to file");
-
-            // TODO: Add some pretty printing
-        },
-        Err(_e) => {
-            // TODO
-        }
-    }
-}
-
-
-pub fn get_hash(content: &[u8]) -> String {
-    let hash = Sha256::digest(content);
-    let hash_hex = hex::encode(hash);
-
-    return hash_hex;
-}

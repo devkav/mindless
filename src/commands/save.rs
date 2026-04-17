@@ -1,4 +1,10 @@
-use crate::util::{blob::compress_file, files::{get_nevermind_patterns, get_root, get_tracked_files}};
+use crate::{objects::blob::create_blob, util::{
+    workspace::{
+        get_nevermind_patterns,
+        get_root,
+        get_tracked_files
+    }
+}};
 
 
 pub fn save(message: String) {
@@ -13,6 +19,6 @@ pub fn save(message: String) {
     let tracked_files = get_tracked_files(None, &nevermind_patterns, &mindless_root);
 
     for file in tracked_files {
-        compress_file(&file, &mindless_root);
+        create_blob(&file, &mindless_root);
     }
 }
