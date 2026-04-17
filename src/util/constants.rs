@@ -4,4 +4,4 @@ pub const OBJECTS_DIR_NAME: &str = "objects";
 
 pub const BLOB_OBJECT_TYPE: &str = "blob";
 // pub const TREE_OBJECT_TYPE: &str = "tree";
-// pub const COMMIT_OBJECT_TYPE: &str = "commit";
+pub const COMMIT_OBJECT_TYPE: &str = "commit";

@@ -6,7 +6,7 @@ use crate::{
 };
 
 
-pub fn create_blob(file_path: &PathBuf, mindless_root: &PathBuf) {
+pub fn create_blob(file_path: &PathBuf, mindless_root: &PathBuf) -> Option<String> {
     let input = fs::read(file_path);
 
     match input {
@@ -15,10 +15,11 @@ pub fn create_blob(file_path: &PathBuf, mindless_root: &PathBuf) {
             let mut blob = header.into_bytes();
             blob.extend(&file_bytes);
 
-            create_object(&blob, mindless_root);
+            return Some(create_object(&blob, mindless_root));
         },
         Err(_e) => {
             // TODO
+            return None;
         }
     }
 }

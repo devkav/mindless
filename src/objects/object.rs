@@ -13,7 +13,7 @@ pub fn get_hash(content: &[u8]) -> String {
 }
 
 
-pub fn create_object(content_b: &Vec<u8>, mindless_root: &PathBuf) {
+pub fn create_object(content_b: &Vec<u8>, mindless_root: &PathBuf) -> String {
     let mut compressed_buf = vec![0u8; compress_bound(content_b.len())];
     let (compressed, _) = compress_slice(&mut compressed_buf, &content_b, DeflateConfig::default());
 
@@ -34,4 +34,6 @@ pub fn create_object(content_b: &Vec<u8>, mindless_root: &PathBuf) {
     fs::write(output_path, &compressed).expect("Could not write to file");
 
     // TODO: Add some pretty printing
+
+    return complete_hash;
 }
