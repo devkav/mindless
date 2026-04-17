@@ -3,22 +3,13 @@ mod commands;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use util::blob;
-use commands::save;
-
-use crate::commands::init;
+use commands::save::save;
+use commands::init::init;
 
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    name: Option<String>,
-
-    // #[arg(short, long, value_name = "FILE")]
-    // config: Option<std::path::PathBuf>,
-
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    debug: u8,
-
     #[command(subcommand)]
     command: Option<Commands>,
 }
@@ -36,18 +27,6 @@ enum Commands {
 
 fn main() {
     let cli = Cli::parse();
-
-    if let Some(name) = cli.name.as_deref() {
-        println!("Value for name: {name}");
-    }
-
-    /*
-    match cli.debug {
-        0 => println!("Debug mode is off"),
-        1 => println!("Debug mode is kind of on"),
-        _ => println!("Debug mode is fully on"),
-    }
-    */
 
     match cli.command {
         Some(Commands::DbgDecompress { path }) => {
