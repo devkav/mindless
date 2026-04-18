@@ -1,103 +1,49 @@
-use std::{env, fs::{self}, path::PathBuf};
-use glob::Pattern;
-
-use crate::util::constants::{MINDLESS_DIR_NAME, NEVERMIND_FILE_NAME};
+use std::{fs::{self}};
+use zlib_rs::{InflateConfig, decompress_slice};
 
 
-pub fn get_root() -> Option<PathBuf> {
-    let mut current_directory = env::current_dir().expect("Couldn't find working directory");
-    let mut system_root_reached = false;
+pub fn decompress_file(blob_path: String) -> String {
+    // TODO: Prob needs a rewrite/TODO to fix error handling
 
-    while !system_root_reached {
-        let mindless_dir = current_directory.join(MINDLESS_DIR_NAME);
+    let config = InflateConfig::default();
 
-        if mindless_dir.exists() {
-            return Some(current_directory);
-        }
+    let bytes: Vec<u8> = fs::read(blob_path).expect("Something went wrong while opening blob");
+    let input: &[u8] = &bytes;
+    let mut header_buf = vec![0u8; 32];
 
-        match current_directory.parent() {
-            Some(parent_directory) => {
-                current_directory = parent_directory.to_path_buf();
-            },
-            None => {
-                system_root_reached = true;
-            }
-        }
-    }
+    let (decompressed_header, _) = decompress_slice(&mut header_buf, input, config);
+    let mut header_bytes: Vec<u8> = Vec::new();
+    let mut i = 0;
+    let mut null_char_found: bool = false;
 
-    return None;
-}
+    while i < decompressed_header.len() && !null_char_found {
+        let byte: u8 = decompressed_header[i];
 
-
-pub fn get_nevermind_patterns(mindless_root: &PathBuf) -> Vec<Pattern> {
-    // Always ignore .mindless directory
-    let sanitized_default_pattern = format!("*/{}", MINDLESS_DIR_NAME);
-    let default_pattern = Pattern::new(&sanitized_default_pattern).expect("Something went wrong while creating default pattern");
-    let mut patterns: Vec<Pattern> = vec![default_pattern];
-    let nevermind_file_path: PathBuf = mindless_root.join(NEVERMIND_FILE_NAME);
-
-    if !nevermind_file_path.exists() || !nevermind_file_path.is_file() {
-        return patterns;
-    }
-
-    let error_msg = format!("nevermind file at {} could not be read", nevermind_file_path.display());
-    let content = fs::read_to_string(nevermind_file_path).expect(&error_msg);
-
-    for line in content.lines() {
-        let sanitized_pattern = line.trim()
-            .trim_start_matches("/")
-            .trim_end_matches("/");
-        let sanitized_pattern = format!("*/{}", sanitized_pattern);
-        let pattern = Pattern::new(&sanitized_pattern);
-
-        if let Ok(valid_pattern) = pattern {
-            patterns.push(valid_pattern);
-        }
-    }
-
-    return patterns;
-}
-
-
-pub fn get_tracked_files(
-    directory: Option<&PathBuf>,
-    nevermind_patterns: &Vec<Pattern>,
-    mindless_root: &PathBuf
-) -> Vec<PathBuf> {
-    let directory: &PathBuf = match directory {
-        Some(valid_directory) => valid_directory,
-        None => &mindless_root
-    };
-
-    let mut files: Vec<PathBuf> = Vec::new();
-    let children = directory.read_dir().expect("Error searching directory");
-
-    for child in children {
-        let Ok(child_path) = child else { continue };
-        let child_path = child_path.path();
-
-        let mut ignore = false;
-        let path_str = child_path.to_str().expect("Something went wrong while reading file path");
-
-        for pattern in nevermind_patterns {
-            if pattern.matches(path_str) {
-                ignore = true;
-                break;
-            }
-        }
-
-        if ignore {
+        if byte == 0 {
+            null_char_found = true;
             continue;
         }
 
-        if child_path.is_dir() {
-            let descendants = get_tracked_files(Some(&child_path), nevermind_patterns, &mindless_root);
-            files.extend(descendants);
-        } else if child_path.is_file() {
-            // TODO: Check if file is in .nevermind
-            files.push(child_path);
-        }
+        header_bytes.push(byte);
+        i += 1;
     }
 
-    return files;
+    let header_str = str::from_utf8(&header_bytes).expect("Something went wrong while parsing decompressed string");
+    let header_tokens: Vec<&str> = header_str.split(" ").collect();
+
+    assert!(header_tokens.len() == 2);
+    let blob_size = header_tokens[1].parse::<usize>();
+    assert!(blob_size.is_ok());
+
+    let total_blob_size = blob_size.unwrap() + decompressed_header.len();
+
+    let mut buf = vec![0u8; total_blob_size];
+    let (decompressed_blob, _) = decompress_slice(&mut buf, input, config);
+    let output_result = str::from_utf8(decompressed_blob)
+        .expect("Something went wrong while parsing blob")
+        .to_string();
+
+    return output_result;
 }
+
+

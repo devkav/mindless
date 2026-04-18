@@ -1,10 +1,12 @@
 mod util;
 mod commands;
+mod objects;
 
 use clap::{CommandFactory, Parser, Subcommand};
-use util::blob;
 use commands::save::save;
 use commands::init::init;
+
+use crate::util::files::decompress_file;
 
 
 #[derive(Parser, Debug)]
@@ -31,7 +33,7 @@ fn main() {
     match cli.command {
         Some(Commands::DbgDecompress { path }) => {
             println!("{}", path);
-            let decompressed = blob::decompress_blob(path);
+            let decompressed = decompress_file(path);
             println!("{}", decompressed)
         }
         Some(Commands::Save { message }) => save(message),
