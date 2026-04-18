@@ -45,8 +45,6 @@ pub fn create_tree(path_prefix: &PathBuf, mindless_root: &PathBuf, tracked_files
                 } else {
                     println!("There was an error commiting file.");
                 }
-
-                println!("Creating blob of: {}", current_object.as_os_str().to_str().expect("bleh"));
             }
         }
     }

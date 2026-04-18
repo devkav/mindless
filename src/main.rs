@@ -32,7 +32,6 @@ fn main() {
 
     match cli.command {
         Some(Commands::DbgDecompress { path }) => {
-            println!("{}", path);
             let decompressed = decompress_file(path);
             println!("{}", decompressed)
         }
