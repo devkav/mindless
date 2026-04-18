@@ -1,8 +1,7 @@
-use crate::{objects::{blob::create_blob, object::create_object}, util::{constants::COMMIT_OBJECT_TYPE, workspace::{
-    get_nevermind_patterns,
-    get_root,
-    get_tracked_files
-}}};
+use crate::{
+    objects::{object::create_object, tree::create_tree},
+    util::{constants::COMMIT_OBJECT_TYPE, workspace::{get_nevermind_patterns, get_root, get_tracked_files}}
+};
 
 
 pub fn create_commit(message: &str) {
@@ -13,21 +12,16 @@ pub fn create_commit(message: &str) {
 
     let nevermind_patterns = get_nevermind_patterns(&mindless_root);
     let tracked_files = get_tracked_files(None, &nevermind_patterns, &mindless_root);
-    let mut blob_hashes: Vec<String> = Vec::new();
+    let tree = create_tree(&mindless_root, &mindless_root, &tracked_files);
 
-    for file in tracked_files {
-        if let Some(blob_hash) = create_blob(&file, &mindless_root) {
-            blob_hashes.push(blob_hash);
-        } else {
-            println!("There was an error commiting file.");
-        }
-    }
+    // TODO: Add parent!
 
     let content = format!(
-        "tree <TREE>\n\
+        "tree {}\n\
         parent<PARENT>\n\
         \n\
-        {}", message
+        {}",
+        tree, message
     );
 
     let content_bytes = content.as_bytes();
