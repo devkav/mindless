@@ -1,2 +1,2 @@
 pub mod save;
-pub mod init;
+pub mod new;

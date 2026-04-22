@@ -4,7 +4,7 @@ mod objects;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use commands::save::save;
-use commands::init::init;
+use commands::new::new;
 
 use crate::util::files::decompress_file;
 
@@ -24,7 +24,7 @@ enum Commands {
     Save {
         message: String
     },
-    Init {}
+    New {},
 }
 
 fn main() {
@@ -36,7 +36,7 @@ fn main() {
             println!("{}", decompressed)
         }
         Some(Commands::Save { message }) => save(message),
-        Some(Commands::Init {}) => init(),
+        Some(Commands::New {}) => new(),
         None => {
             let _ = Cli::command().print_help();
         }

@@ -5,7 +5,7 @@ use crate::util::constants::{
 };
 
 
-pub fn init() {
+pub fn new() {
     let working_directory = env::current_dir().expect("Couldn't find working directory");
     let mindless_directory = working_directory.join(MINDLESS_DIR_NAME);
 
@@ -31,7 +31,7 @@ pub fn init() {
             write(head_file, head_file_content).expect("Something went wrong while create HEAD file");
             write(main_head_file, EMPTY_BRANCH).expect("Something went wrong while create main head file");
 
-            println!("mindless project initialized.")
+            println!("New mindless project created.");
         },
         Err(_) => {
             println!("There was an error creating a project.")
