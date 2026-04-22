@@ -54,4 +54,8 @@ pub fn create_commit(message: &str) {
         .join(name);
 
     write(ref_file, commit_hash).expect("Something went wrong while committing hash");
+
+    println!("Changes to workspace saved.");
+
+    // TODO: Show additions/deletions
 }
