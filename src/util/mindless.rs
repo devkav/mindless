@@ -1,6 +1,6 @@
 use std::{fs::read_to_string, path::PathBuf};
 
-use crate::util::constants::{EMPTY_BRANCH, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME};
+use crate::util::{constants::{EMPTY_BRANCH, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME}};
 
 
 pub fn get_head(mindless_root: &PathBuf) -> Option<String> {
