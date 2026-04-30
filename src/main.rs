@@ -5,6 +5,7 @@ mod objects;
 use clap::{CommandFactory, Parser, Subcommand};
 use commands::save::save;
 use commands::new::new;
+use commands::history::history;
 
 use crate::util::files::decompress_file;
 
@@ -18,13 +19,18 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    /// Debug tool to decompress files
     DbgDecompress {
         path: String,
     },
+    /// Save the state of the current workspace
     Save {
         message: String
     },
+    /// Create a new mindless project
     New {},
+    /// View change history of the current workspace
+    History {},
 }
 
 fn main() {
@@ -32,11 +38,12 @@ fn main() {
 
     match cli.command {
         Some(Commands::DbgDecompress { path }) => {
-            let decompressed = decompress_file(path);
+            let decompressed = decompress_file(&path);
             println!("{}", decompressed)
         }
         Some(Commands::Save { message }) => save(message),
         Some(Commands::New {}) => new(),
+        Some(Commands::History {}) => history(),
         None => {
             let _ = Cli::command().print_help();
         }

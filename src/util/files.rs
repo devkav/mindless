@@ -2,7 +2,7 @@ use std::{fs::{self}};
 use zlib_rs::{InflateConfig, decompress_slice};
 
 
-pub fn decompress_file(blob_path: String) -> String {
+pub fn decompress_file(blob_path: &str) -> String {
     // TODO: Prob needs a rewrite/TODO to fix error handling
 
     let config = InflateConfig::default();

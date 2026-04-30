@@ -2,7 +2,7 @@ use std::{fs::{self, create_dir}, path::PathBuf};
 use zlib_rs::{DeflateConfig, compress_bound, compress_slice};
 use sha2::{Digest, Sha256};
 
-use crate::util::{constants::{MINDLESS_DIR_NAME, OBJECTS_DIR_NAME}};
+use crate::util::{constants::{MINDLESS_DIR_NAME, OBJECTS_DIR_NAME}, files::decompress_file};
 
 
 pub fn get_hash(content: &[u8]) -> String {
@@ -36,4 +36,45 @@ pub fn create_object(content_b: &Vec<u8>, mindless_root: &PathBuf) -> String {
     // TODO: Add some pretty printing
 
     return complete_hash;
+}
+
+
+pub fn get_object(mindless_root: &PathBuf, object_hash: &str, remove_type: bool) -> Option<String> {
+    let object_dir_name = &object_hash[0..2];
+    let object_file_name = &object_hash[2..];
+
+    let object_file = mindless_root
+        .join(MINDLESS_DIR_NAME)
+        .join(OBJECTS_DIR_NAME)
+        .join(object_dir_name)
+        .join(object_file_name);
+
+    if !object_file.exists() || !object_file.is_file() {
+        return None;
+    }
+
+    let object_file_str = object_file
+        .to_str()
+        .expect("Error converting path to string")
+        .to_string();
+
+
+    let file_contents_option = Some(decompress_file(&object_file_str));
+
+    return match file_contents_option {
+        Some(file_contents) => {
+            if remove_type && file_contents.contains("\0") {
+                let file_str_tokens = file_contents 
+                    .split_once('\0')
+                    .expect("Something went wrong while removing object type");
+
+                Some(file_str_tokens.1.to_string())
+            } else {
+                Some(file_contents)
+            }
+        },
+        None => {
+            None
+        }
+    }
 }

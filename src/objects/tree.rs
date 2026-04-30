@@ -33,6 +33,9 @@ pub fn create_tree(path_prefix: &PathBuf, mindless_root: &PathBuf, tracked_files
                 }
             } else {
                 // TODO: Only create blobs for objects that have changed
+                // If the file has not changed, the blob will be the same!
+                // So techinically we don't need to check when the file was last changed
+                // However, I think we should to avoid any redundant compressions
 
                 if let Some(blob_hash) = create_blob(&file, mindless_root) {
                     let file_name = file.file_name()
