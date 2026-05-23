@@ -1,8 +1,8 @@
 use std::{env, fs::{create_dir, write}};
 
-use crate::util::constants::{
+use crate::util::{constants::{
     EMPTY_BRANCH, HEAD_FILE_NAME, HEAD_REF_TYPE, HEADS_DIR_NAME, MAIN_BRANCH_NAME, MINDLESS_DIR_NAME, OBJECTS_DIR_NAME, REFS_DIR_NAME
-};
+}, output::{print_project_already_exists, print_project_created}};
 
 
 pub fn new() {
@@ -10,7 +10,7 @@ pub fn new() {
     let mindless_directory = working_directory.join(MINDLESS_DIR_NAME);
 
     if mindless_directory.exists() {
-        println!("mindless project already exists.");
+        print_project_already_exists();
         return;
     }
 
@@ -31,7 +31,7 @@ pub fn new() {
             write(head_file, head_file_content).expect("Something went wrong while create HEAD file");
             write(main_head_file, EMPTY_BRANCH).expect("Something went wrong while create main head file");
 
-            println!("New mindless project created.");
+            print_project_created();
         },
         Err(_) => {
             println!("There was an error creating a project.")

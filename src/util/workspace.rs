@@ -1,4 +1,4 @@
-use std::{env, fs::{self}, path::PathBuf};
+use std::{collections::HashSet, env, fs::{self}, path::PathBuf};
 use glob::Pattern;
 
 use crate::util::constants::{MINDLESS_DIR_NAME, NEVERMIND_FILE_NAME};
@@ -71,10 +71,17 @@ pub fn get_tracked_files(
 
     let mut files: Vec<PathBuf> = Vec::new();
     let children = directory.read_dir().expect("Error searching directory");
+    let mut visited: HashSet<PathBuf> = HashSet::new();
 
     for child in children {
         let Ok(child_path) = child else { continue };
         let child_path = child_path.path();
+
+        if visited.contains(&child_path) {
+            continue;
+        }
+
+        visited.insert(child_path.clone());
 
         let mut ignore = false;
         let path_str = child_path.to_str().expect("Something went wrong while reading file path");
@@ -94,7 +101,6 @@ pub fn get_tracked_files(
             let descendants = get_tracked_files(Some(&child_path), nevermind_patterns, &mindless_root);
             files.extend(descendants);
         } else if child_path.is_file() {
-            // TODO: Check if file is in .nevermind
             files.push(child_path);
         }
     }

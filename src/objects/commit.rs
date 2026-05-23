@@ -2,7 +2,7 @@ use std::{fs::{read_to_string, write}, path::PathBuf};
 
 use crate::{
     objects::{object::{create_object, get_object}, tree::create_tree},
-    util::{constants::{COMMIT_OBJECT_TYPE, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME}, mindless::get_head, workspace::{get_nevermind_patterns, get_root, get_tracked_files}}
+    util::{constants::{COMMIT_OBJECT_TYPE, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME}, mindless::get_head, output::print_project_not_found, workspace::{get_nevermind_patterns, get_root, get_tracked_files}}
 };
 
 
@@ -23,7 +23,7 @@ pub struct Commit {
 
 pub fn create_commit(message: &str) {
     let Some(mindless_root) = get_root() else {
-        println!("No mindless project found.");
+        print_project_not_found();
         return;
     };
 
