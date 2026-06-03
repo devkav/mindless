@@ -1,6 +1,6 @@
-use std::{fs::read_to_string, path::PathBuf};
+use std::{fs::read_to_string, process, path::PathBuf};
 
-use crate::util::{constants::{EMPTY_BRANCH, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME}};
+use crate::util::{constants::{EMPTY_BRANCH, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME}, output::print_error_reading_head};
 
 
 pub fn get_head(mindless_root: &PathBuf) -> Option<String> {
@@ -32,6 +32,9 @@ pub fn get_head(mindless_root: &PathBuf) -> Option<String> {
                 Some(head_hash)
             }
         }
-        Err(_e) => None
+        Err(_e) => {
+            print_error_reading_head();
+            process::exit(1);
+        }
     };
 }
