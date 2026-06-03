@@ -1,8 +1,10 @@
-use std::{fs::{read_to_string, write}, path::PathBuf};
+use std::{fs::{read_to_string, write}, path::PathBuf, process};
+
+use colored::Colorize;
 
 use crate::{
-    objects::{object::{create_object, get_object}, tree::create_tree},
-    util::{constants::{COMMIT_OBJECT_TYPE, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME}, mindless::get_head, output::print_project_not_found, workspace::{get_nevermind_patterns, get_root, get_tracked_files}}
+    objects::{object::{create_object, get_object}, tree::{create_tree, get_tree_diff}},
+    util::{constants::{COMMIT_OBJECT_TYPE, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME}, mindless::get_head, output::{print_error_reading_head, print_project_not_found}, workspace::{get_nevermind_patterns, get_root, get_tracked_files}}
 };
 
 
@@ -24,7 +26,7 @@ pub struct Commit {
 pub fn create_commit(message: &str) {
     let Some(mindless_root) = get_root() else {
         print_project_not_found();
-        return;
+        process::exit(1);
     };
 
     let nevermind_patterns = get_nevermind_patterns(&mindless_root);
@@ -36,6 +38,41 @@ pub fn create_commit(message: &str) {
 
     if let Some(head_hash) = get_head(&mindless_root) {
         content.push_str(&format!("parent {}\n", head_hash));
+
+        if let Some(head_commit) = get_commit(&mindless_root, &head_hash) {
+            if let Some(change_report) = get_tree_diff(&mindless_root, &head_commit.tree, &tree, "") {
+                println!("Changes saved to project.\n");
+
+                if change_report.new_files.len() > 0 {
+                    println!("{}", "New Files".bold());
+
+                    for change in change_report.new_files {
+                        println!("  {}", change.to_string());
+                    }
+                }
+
+                if change_report.deleted_files.len() > 0 {
+                    println!("{}", "Deleted Files".bold());
+
+                    for change in change_report.deleted_files {
+                        println!("  {}", change.to_string());
+                    }
+                }
+
+                if change_report.changed_files.len() > 0 {
+                    println!("{}", "Changed Files".bold());
+
+                    for change in change_report.changed_files {
+                        println!("  {}", change.to_string());
+                    }
+                }
+            } else {
+                println!("{}", "There was an unexpected error while getting diff.".red())
+            }
+        } else {
+            print_error_reading_head();
+            process::exit(1);
+        }
     }
 
     content.push_str(&format!("\n{}", message));
@@ -55,8 +92,8 @@ pub fn create_commit(message: &str) {
     let tokens: Vec<&str> = head_content.split(" ").collect();
 
     if tokens.len() != 2 {
-        println!("Something went wrong while committing to head");
-        return;
+        print_error_reading_head();
+        process::exit(1);
     }
 
     let ref_type = tokens[0];
@@ -70,10 +107,6 @@ pub fn create_commit(message: &str) {
         .join(name);
 
     write(ref_file, commit_hash).expect("Something went wrong while committing hash");
-
-    println!("Changes to workspace saved.");
-
-    // TODO: Show additions/deletions
 }
 
 
