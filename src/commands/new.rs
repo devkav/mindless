@@ -1,9 +1,15 @@
-use std::{env, fs::{create_dir, write}};
+use std::{
+    env,
+    fs::{create_dir, write},
+};
 
-use crate::util::{constants::{
-    EMPTY_BRANCH, HEAD_FILE_NAME, HEAD_REF_TYPE, HEADS_DIR_NAME, MAIN_BRANCH_NAME, MINDLESS_DIR_NAME, OBJECTS_DIR_NAME, REFS_DIR_NAME
-}, output::{print_project_already_exists, print_project_created}};
-
+use crate::util::{
+    constants::{
+        EMPTY_BRANCH, HEAD_FILE_NAME, HEAD_REF_TYPE, HEADS_DIR_NAME, MAIN_BRANCH_NAME,
+        MINDLESS_DIR_NAME, OBJECTS_DIR_NAME, REFS_DIR_NAME,
+    },
+    output::{print_project_already_exists, print_project_created},
+};
 
 pub fn new() {
     let working_directory = env::current_dir().expect("Couldn't find working directory");
@@ -28,11 +34,13 @@ pub fn new() {
             create_dir(refs_dir).expect("Something went wrong while creating refs directory");
             create_dir(heads_ref_dir).expect("Something went wrong while creating heads directory");
 
-            write(head_file, head_file_content).expect("Something went wrong while create HEAD file");
-            write(main_head_file, EMPTY_BRANCH).expect("Something went wrong while create main head file");
+            write(head_file, head_file_content)
+                .expect("Something went wrong while create HEAD file");
+            write(main_head_file, EMPTY_BRANCH)
+                .expect("Something went wrong while create main head file");
 
             print_project_created();
-        },
+        }
         Err(_) => {
             println!("There was an error creating a project.")
         }

@@ -1,9 +1,14 @@
-use std::{fs::{self, create_dir}, path::PathBuf};
-use zlib_rs::{DeflateConfig, compress_bound, compress_slice};
 use sha2::{Digest, Sha256};
+use std::{
+    fs::{self, create_dir},
+    path::PathBuf,
+};
+use zlib_rs::{DeflateConfig, compress_bound, compress_slice};
 
-use crate::util::{constants::{MINDLESS_DIR_NAME, OBJECTS_DIR_NAME}, files::decompress_file};
-
+use crate::util::{
+    constants::{MINDLESS_DIR_NAME, OBJECTS_DIR_NAME},
+    files::decompress_file,
+};
 
 pub fn get_hash(content: &[u8]) -> String {
     let hash = Sha256::digest(content);
@@ -11,7 +16,6 @@ pub fn get_hash(content: &[u8]) -> String {
 
     return hash_hex;
 }
-
 
 pub fn create_object(content_b: &Vec<u8>, mindless_root: &PathBuf) -> String {
     let mut compressed_buf = vec![0u8; compress_bound(content_b.len())];
@@ -27,7 +31,8 @@ pub fn create_object(content_b: &Vec<u8>, mindless_root: &PathBuf) -> String {
         .join(object_dir_name);
 
     if !object_dir_path.exists() {
-        create_dir(&object_dir_path).expect("Something went wrong while creating object directory.");
+        create_dir(&object_dir_path)
+            .expect("Something went wrong while creating object directory.");
     }
 
     let output_path = object_dir_path.join(file_name);
@@ -37,7 +42,6 @@ pub fn create_object(content_b: &Vec<u8>, mindless_root: &PathBuf) -> String {
 
     return complete_hash;
 }
-
 
 pub fn get_object(mindless_root: &PathBuf, object_hash: &str, remove_type: bool) -> Option<String> {
     let object_dir_name = &object_hash[0..2];
@@ -58,13 +62,12 @@ pub fn get_object(mindless_root: &PathBuf, object_hash: &str, remove_type: bool)
         .expect("Error converting path to string")
         .to_string();
 
-
     let file_contents_option = Some(decompress_file(&object_file_str));
 
     return match file_contents_option {
         Some(file_contents) => {
             if remove_type && file_contents.contains("\0") {
-                let file_str_tokens = file_contents 
+                let file_str_tokens = file_contents
                     .split_once('\0')
                     .expect("Something went wrong while removing object type");
 
@@ -72,9 +75,7 @@ pub fn get_object(mindless_root: &PathBuf, object_hash: &str, remove_type: bool)
             } else {
                 Some(file_contents)
             }
-        },
-        None => {
-            None
         }
-    }
+        None => None,
+    };
 }

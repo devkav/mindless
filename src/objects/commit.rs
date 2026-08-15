@@ -1,11 +1,23 @@
-use std::{fs::{read_to_string, write}, path::PathBuf, process};
+use std::{
+    fs::{read_to_string, write},
+    path::PathBuf,
+    process,
+};
 
 use colored::Colorize;
 
 use crate::{
-    objects::{object::{create_object, get_object}, tree::{create_tree, get_tree_diff}}, util::{constants::{COMMIT_OBJECT_TYPE, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME}, mindless::get_head_hash, output::{print_error_reading_head}, workspace::{get_nevermind_patterns, get_root_or_exit, get_tracked_files}}
+    objects::{
+        object::{create_object, get_object},
+        tree::{create_tree, get_tree_diff},
+    },
+    util::{
+        constants::{COMMIT_OBJECT_TYPE, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME},
+        mindless::get_head_hash,
+        output::print_error_reading_head,
+        workspace::{get_nevermind_patterns, get_root_or_exit, get_tracked_files},
+    },
 };
-
 
 struct CommitBuilder {
     tree: Option<String>,
@@ -13,14 +25,12 @@ struct CommitBuilder {
     message: String,
 }
 
-
 pub struct Commit {
     pub tree: String,
     pub parent: Option<String>,
     pub message: String,
     pub hash: String,
 }
-
 
 pub fn create_commit(message: &str) {
     let mindless_root = get_root_or_exit();
@@ -62,7 +72,10 @@ pub fn create_commit(message: &str) {
                 }
             }
         } else {
-            println!("{}", "There was an unexpected error while getting diff.".red())
+            println!(
+                "{}",
+                "There was an unexpected error while getting diff.".red()
+            )
         }
     }
 
@@ -76,9 +89,7 @@ pub fn create_commit(message: &str) {
 
     let commit_hash = create_object(&complete_bytes, &mindless_root);
 
-    let head_file = mindless_root
-        .join(MINDLESS_DIR_NAME)
-        .join(HEAD_FILE_NAME);
+    let head_file = mindless_root.join(MINDLESS_DIR_NAME).join(HEAD_FILE_NAME);
     let head_content = read_to_string(head_file).expect("Something went wrong while reading HEAD");
     let tokens: Vec<&str> = head_content.split(" ").collect();
 
@@ -100,7 +111,6 @@ pub fn create_commit(message: &str) {
     write(ref_file, commit_hash).expect("Something went wrong while committing hash");
 }
 
-
 pub fn get_commit(mindless_root: &PathBuf, commit_hash: &str) -> Option<Commit> {
     let commit_contents_option = get_object(mindless_root, commit_hash, true);
 
@@ -108,8 +118,13 @@ pub fn get_commit(mindless_root: &PathBuf, commit_hash: &str) -> Option<Commit> 
         return None;
     }
 
-    let commit_contents = commit_contents_option.expect("Something went wrong while getting commit hash");
-    let mut commit_builder = CommitBuilder{ tree: None, parent: None, message: String::new() };
+    let commit_contents =
+        commit_contents_option.expect("Something went wrong while getting commit hash");
+    let mut commit_builder = CommitBuilder {
+        tree: None,
+        parent: None,
+        message: String::new(),
+    };
     let mut newline_found = false;
 
     for line in commit_contents.lines() {
@@ -118,9 +133,13 @@ pub fn get_commit(mindless_root: &PathBuf, commit_hash: &str) -> Option<Commit> 
             continue;
         }
 
-        if line.starts_with("tree") && let Some(tree) = line.strip_prefix("tree ") {
+        if line.starts_with("tree")
+            && let Some(tree) = line.strip_prefix("tree ")
+        {
             commit_builder.tree = Some(tree.to_string());
-        } else if line.starts_with("parent") && let Some(parent) = line.strip_prefix("parent ") {
+        } else if line.starts_with("parent")
+            && let Some(parent) = line.strip_prefix("parent ")
+        {
             commit_builder.parent = Some(parent.to_string());
         } else if line.trim() == "" {
             newline_found = true;
@@ -135,10 +154,9 @@ pub fn get_commit(mindless_root: &PathBuf, commit_hash: &str) -> Option<Commit> 
         tree: commit_builder.tree.expect("tree was unexpectedly null"),
         parent: commit_builder.parent,
         message: commit_builder.message,
-        hash: commit_hash.to_string()
+        hash: commit_hash.to_string(),
     });
 }
-
 
 pub fn get_head_commit_or_exit(mindless_root: &PathBuf, head_hash: &str) -> Commit {
     let Some(head_commit) = get_commit(&mindless_root, head_hash) else {

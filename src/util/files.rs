@@ -1,6 +1,5 @@
-use std::{fs::{self}};
+use std::fs::{self};
 use zlib_rs::{InflateConfig, decompress_slice};
-
 
 pub fn decompress_file(blob_path: &str) -> String {
     // TODO: Prob needs a rewrite/TODO to fix error handling
@@ -28,7 +27,8 @@ pub fn decompress_file(blob_path: &str) -> String {
         i += 1;
     }
 
-    let header_str = str::from_utf8(&header_bytes).expect("Something went wrong while parsing decompressed string");
+    let header_str = str::from_utf8(&header_bytes)
+        .expect("Something went wrong while parsing decompressed string");
     let header_tokens: Vec<&str> = header_str.split(" ").collect();
 
     assert!(header_tokens.len() == 2);
@@ -45,5 +45,3 @@ pub fn decompress_file(blob_path: &str) -> String {
 
     return output_result;
 }
-
-

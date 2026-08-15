@@ -1,4 +1,7 @@
-use crate::{objects::{commit::{get_head_commit_or_exit}}, util::{mindless::get_head_hash, workspace::get_root_or_exit}};
+use crate::{
+    objects::commit::get_head_commit_or_exit,
+    util::{mindless::get_head_hash, workspace::get_root_or_exit},
+};
 
 pub fn diff() {
     // TODO: Add diffs between 2 commits
