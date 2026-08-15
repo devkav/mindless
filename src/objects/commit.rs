@@ -3,8 +3,7 @@ use std::{fs::{read_to_string, write}, path::PathBuf, process};
 use colored::Colorize;
 
 use crate::{
-    objects::{object::{create_object, get_object}, tree::{create_tree, get_tree_diff}},
-    util::{constants::{COMMIT_OBJECT_TYPE, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME}, mindless::get_head, output::{print_error_reading_head, print_project_not_found}, workspace::{get_nevermind_patterns, get_root, get_tracked_files}}
+    objects::{object::{create_object, get_object}, tree::{create_tree, get_tree_diff}}, util::{constants::{COMMIT_OBJECT_TYPE, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME}, mindless::get_head_hash, output::{print_error_reading_head}, workspace::{get_nevermind_patterns, get_root_or_exit, get_tracked_files}}
 };
 
 
@@ -24,11 +23,7 @@ pub struct Commit {
 
 
 pub fn create_commit(message: &str) {
-    let Some(mindless_root) = get_root() else {
-        print_project_not_found();
-        process::exit(1);
-    };
-
+    let mindless_root = get_root_or_exit();
     let nevermind_patterns = get_nevermind_patterns(&mindless_root);
     let tracked_files = get_tracked_files(None, &nevermind_patterns, &mindless_root);
     let tree = create_tree(&mindless_root, &mindless_root, &tracked_files);
@@ -36,42 +31,38 @@ pub fn create_commit(message: &str) {
     // TODO: Add timestamp
     let mut content = String::from(format!("tree {}\n", tree));
 
-    if let Some(head_hash) = get_head(&mindless_root) {
+    if let Some(head_hash) = get_head_hash(&mindless_root) {
         content.push_str(&format!("parent {}\n", head_hash));
+        let head_commit = get_head_commit_or_exit(&mindless_root, &head_hash);
 
-        if let Some(head_commit) = get_commit(&mindless_root, &head_hash) {
-            if let Some(change_report) = get_tree_diff(&mindless_root, &head_commit.tree, &tree, "") {
-                println!("Changes saved to project.\n");
+        if let Some(change_report) = get_tree_diff(&mindless_root, &head_commit.tree, &tree, "") {
+            println!("Changes saved to project.\n");
 
-                if change_report.new_files.len() > 0 {
-                    println!("{}", "New Files".bold());
+            if change_report.new_files.len() > 0 {
+                println!("{}", "New Files".bold());
 
-                    for change in change_report.new_files {
-                        println!("  {}", change.to_string());
-                    }
+                for change in change_report.new_files {
+                    println!("  {}", change.to_string());
                 }
+            }
 
-                if change_report.deleted_files.len() > 0 {
-                    println!("{}", "Deleted Files".bold());
+            if change_report.deleted_files.len() > 0 {
+                println!("{}", "Deleted Files".bold());
 
-                    for change in change_report.deleted_files {
-                        println!("  {}", change.to_string());
-                    }
+                for change in change_report.deleted_files {
+                    println!("  {}", change.to_string());
                 }
+            }
 
-                if change_report.changed_files.len() > 0 {
-                    println!("{}", "Changed Files".bold());
+            if change_report.changed_files.len() > 0 {
+                println!("{}", "Changed Files".bold());
 
-                    for change in change_report.changed_files {
-                        println!("  {}", change.to_string());
-                    }
+                for change in change_report.changed_files {
+                    println!("  {}", change.to_string());
                 }
-            } else {
-                println!("{}", "There was an unexpected error while getting diff.".red())
             }
         } else {
-            print_error_reading_head();
-            process::exit(1);
+            println!("{}", "There was an unexpected error while getting diff.".red())
         }
     }
 
@@ -146,4 +137,14 @@ pub fn get_commit(mindless_root: &PathBuf, commit_hash: &str) -> Option<Commit> 
         message: commit_builder.message,
         hash: commit_hash.to_string()
     });
+}
+
+
+pub fn get_head_commit_or_exit(mindless_root: &PathBuf, head_hash: &str) -> Commit {
+    let Some(head_commit) = get_commit(&mindless_root, head_hash) else {
+        print_error_reading_head();
+        process::exit(1);
+    };
+
+    return head_commit;
 }

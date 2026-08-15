@@ -1,7 +1,7 @@
-use std::{collections::HashSet, env, fs::{self}, path::PathBuf};
+use std::{collections::HashSet, env, fs::{self}, path::PathBuf, process};
 use glob::Pattern;
 
-use crate::util::constants::{MINDLESS_DIR_NAME, NEVERMIND_FILE_NAME};
+use crate::util::{constants::{MINDLESS_DIR_NAME, NEVERMIND_FILE_NAME}, output::print_project_not_found};
 
 
 pub fn get_root() -> Option<PathBuf> {
@@ -26,6 +26,16 @@ pub fn get_root() -> Option<PathBuf> {
     }
 
     return None;
+}
+
+
+pub fn get_root_or_exit() -> PathBuf {
+    let Some(mindless_root) = get_root() else {
+        print_project_not_found();
+        process::exit(1);
+    };
+
+    return mindless_root;
 }
 
 

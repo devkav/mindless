@@ -6,6 +6,7 @@ use clap::{CommandFactory, Parser, Subcommand};
 use commands::save::save;
 use commands::new::new;
 use commands::history::history;
+use commands::diff::diff;
 
 use crate::util::files::decompress_file;
 
@@ -31,6 +32,8 @@ enum Commands {
     New {},
     /// View change history of the current workspace
     History {},
+    /// View file changes
+    Diff {},
 }
 
 fn main() {
@@ -44,6 +47,7 @@ fn main() {
         Some(Commands::Save { message }) => save(message),
         Some(Commands::New {}) => new(),
         Some(Commands::History {}) => history(),
+        Some(Commands::Diff {}) => diff(),
         None => {
             let _ = Cli::command().print_help();
         }
