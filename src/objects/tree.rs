@@ -2,9 +2,11 @@ use std::{
     collections::{HashMap, HashSet},
     fmt,
     path::PathBuf,
+    process
 };
 
 use colored::Colorize;
+use rand::Rng;
 use similar::{ChangeTag, TextDiff};
 
 use crate::{
@@ -73,6 +75,79 @@ pub struct ChangeReport {
     pub new_files: Vec<Change>,
     pub deleted_files: Vec<Change>,
     pub changed_files: Vec<Change>,
+}
+
+pub fn create_tree_object(
+    path_prefix: &PathBuf,
+    mindless_root: &PathBuf,
+    tracked_files: &Vec<PathBuf>,
+) -> (String, Tree)
+{
+    let mut visited = HashSet::new();
+    let mut children: HashMap<String, TreeNode>= HashMap::new();
+
+    for file in tracked_files {
+        if !file.starts_with(path_prefix) {
+            continue;
+        }
+
+        let relative_path = file
+            .strip_prefix(path_prefix)
+            .expect("Something went wrong while stripping root prefix");
+        let current_object_option = relative_path.components().next();
+
+        if let Some(current_object) = current_object_option {
+            let current_object_path = path_prefix.join(current_object);
+            let current_object_str = current_object
+                .as_os_str()
+                .to_str()
+                .expect("Something went wrong while converting to a string")
+                .to_string();
+            let current_object_name_str = current_object_path
+                .file_name()
+                .expect("Something went wrong while getting filename")
+                .to_str()
+                .expect("Something went wrong while converting to a string")
+                .to_string();
+
+            if current_object_path.is_dir() {
+                if !visited.contains(&current_object_str) {
+                    visited.insert(current_object_str.clone());
+
+                    let (current_tree_hash, current_tree) = create_tree_object(&current_object_path, &mindless_root, tracked_files);
+
+                    children.insert(
+                        current_tree_hash.clone(),
+                        TreeNode::SubTree {
+                            name: current_object_name_str,
+                            hash: current_tree_hash.clone(),
+                            tree: current_tree
+                        }
+                    );
+                }
+            } else {
+                if let Some(file_name) = current_object_path.file_name() {
+                    // TODO: Remove rand crate after refactor
+                    let blob_hash = format!("my_random_hash_{}", rand::rng().next_u32()); // TODO! Need to refactor create_blob to not create a file
+                    let file_name_str = file_name.to_str().unwrap().to_string();
+
+                    children.insert(
+                        blob_hash.clone(),
+                        TreeNode::Blob {
+                            name: file_name_str,
+                            hash: blob_hash
+                        }
+                    );
+                } else {
+                    println!("There was an error creating blob for file {current_object_str}");
+                }
+            }
+        }
+    }
+
+    // TODO: Remove rand crate after refactor
+    let tree_hash = format!("my_random_hash_{}", rand::rng().next_u32()); // TODO!
+    return (tree_hash, Tree { children });
 }
 
 pub fn create_tree(
@@ -209,10 +284,20 @@ pub fn get_tree(mindless_root: &PathBuf, hash: &str) -> Option<Tree> {
     }
 }
 
+
+pub fn get_tree_or_exit(mindless_root: &PathBuf, hash: &str) -> Tree {
+    let Some(tree) = get_tree(mindless_root, hash) else {
+        print_error_reading_tree();
+        process::exit(1);
+    };
+
+    return tree;
+}
+
 pub fn get_tree_diff(
     mindless_root: &PathBuf,
-    parent: &str,
-    child: &str,
+    parent: Tree,
+    child: Tree,
     path_from_root: &str,
 ) -> Option<ChangeReport> {
     let mut new_files: Vec<Change> = Vec::new();
@@ -222,55 +307,85 @@ pub fn get_tree_diff(
     // TODO: Need to cover both new files and deleted files
     // TODO: Make work for initial commits
 
-    if let Some(parent_object) = get_tree(mindless_root, parent)
-        && let Some(child_object) = get_tree(mindless_root, child)
-    {
-        for (name, tree_node) in child_object.children {
-            let current_hash = tree_node.get_hash();
+    for (name, tree_node) in child.children {
+        let current_hash = tree_node.get_hash();
 
-            match parent_object.children.get(&name) {
-                Some(prev_hash_object) => {
-                    let prev_hash = prev_hash_object.get_hash();
+        match parent.children.get(&name) {
+            Some(prev_hash_object) => {
+                let prev_hash = prev_hash_object.get_hash();
 
-                    if prev_hash != current_hash {
-                        match tree_node {
-                            TreeNode::SubTree { .. } => {
-                                let path_to_tree = format!("{}{}/", path_from_root, name);
+                if prev_hash != current_hash {
+                    match tree_node {
+                        TreeNode::SubTree { .. } => {
+                            let path_to_tree = format!("{}{}/", path_from_root, name);
+                            let prev_tree = get_tree_or_exit(mindless_root, prev_hash);
+                            let current_tree = get_tree_or_exit(mindless_root, current_hash);
 
-                                if let Some(nested_change_report) = get_tree_diff(
-                                    mindless_root,
-                                    prev_hash,
-                                    &current_hash,
-                                    &path_to_tree,
-                                ) {
-                                    new_files.extend(nested_change_report.new_files);
-                                    deleted_files.extend(nested_change_report.deleted_files);
-                                    changed_files.extend(nested_change_report.changed_files);
+                            if let Some(nested_change_report) = get_tree_diff(
+                                mindless_root,
+                                prev_tree,
+                                current_tree,
+                                &path_to_tree,
+                            ) {
+                                new_files.extend(nested_change_report.new_files);
+                                deleted_files.extend(nested_change_report.deleted_files);
+                                changed_files.extend(nested_change_report.changed_files);
+                            }
+                        }
+                        TreeNode::Blob { .. } => {
+                            let path_to_blob = format!("{}{}", path_from_root, name);
+
+                            if let Some(prev_blob) = get_object(mindless_root, prev_hash, true)
+                                && let Some(blob) =
+                                    get_object(mindless_root, current_hash, true)
+                            {
+                                let diff = TextDiff::from_lines(&prev_blob, &blob);
+                                let mut additions = 0;
+                                let mut deletions = 0;
+
+                                for change in diff.iter_all_changes() {
+                                    match change.tag() {
+                                        ChangeTag::Equal => {}
+                                        ChangeTag::Insert => additions += 1,
+                                        ChangeTag::Delete => deletions += 1,
+                                    }
+                                }
+
+                                changed_files.push(Change {
+                                    additions: additions,
+                                    deletions: deletions,
+                                    mode: ChangeMode::CHANGE,
+                                    filename: path_to_blob,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            None => match &tree_node {
+                TreeNode::SubTree { .. } => {
+                    let mut queue: Vec<(TreeNode, String)> =
+                        vec![(tree_node, path_from_root.to_string())];
+
+                    while let Some((current, path_to_parent)) = queue.pop() {
+                        match current {
+                            TreeNode::SubTree { name, tree, .. } => {
+                                let path_to_tree = format!("{}{}/", path_to_parent, name);
+
+                                for (_child_name, child) in tree.children {
+                                    queue.push((child, path_to_tree.to_string()));
                                 }
                             }
-                            TreeNode::Blob { .. } => {
-                                let path_to_blob = format!("{}{}", path_from_root, name);
+                            TreeNode::Blob { name, hash } => {
+                                let path_to_blob = format!("{}{}", path_to_parent, name);
 
-                                if let Some(prev_blob) = get_object(mindless_root, prev_hash, true)
-                                    && let Some(blob) =
-                                        get_object(mindless_root, current_hash, true)
+                                if let Some(blob_content) =
+                                    get_object(mindless_root, &hash, true)
                                 {
-                                    let diff = TextDiff::from_lines(&prev_blob, &blob);
-                                    let mut additions = 0;
-                                    let mut deletions = 0;
-
-                                    for change in diff.iter_all_changes() {
-                                        match change.tag() {
-                                            ChangeTag::Equal => {}
-                                            ChangeTag::Insert => additions += 1,
-                                            ChangeTag::Delete => deletions += 1,
-                                        }
-                                    }
-
-                                    changed_files.push(Change {
-                                        additions: additions,
-                                        deletions: deletions,
-                                        mode: ChangeMode::CHANGE,
+                                    new_files.push(Change {
+                                        additions: blob_content.lines().count(),
+                                        deletions: 0,
+                                        mode: ChangeMode::CREATION,
                                         filename: path_to_blob,
                                     });
                                 }
@@ -278,55 +393,20 @@ pub fn get_tree_diff(
                         }
                     }
                 }
-                None => match &tree_node {
-                    TreeNode::SubTree { .. } => {
-                        let mut queue: Vec<(TreeNode, String)> =
-                            vec![(tree_node, path_from_root.to_string())];
+                TreeNode::Blob { name, hash } => {
+                    let path_to_blob = format!("{}{}", path_from_root, name);
 
-                        while let Some((current, path_to_parent)) = queue.pop() {
-                            match current {
-                                TreeNode::SubTree { name, tree, .. } => {
-                                    let path_to_tree = format!("{}{}/", path_to_parent, name);
-
-                                    for (_child_name, child) in tree.children {
-                                        queue.push((child, path_to_tree.to_string()));
-                                    }
-                                }
-                                TreeNode::Blob { name, hash } => {
-                                    let path_to_blob = format!("{}{}", path_to_parent, name);
-
-                                    if let Some(blob_content) =
-                                        get_object(mindless_root, &hash, true)
-                                    {
-                                        new_files.push(Change {
-                                            additions: blob_content.lines().count(),
-                                            deletions: 0,
-                                            mode: ChangeMode::CREATION,
-                                            filename: path_to_blob,
-                                        });
-                                    }
-                                }
-                            }
-                        }
+                    if let Some(blob_content) = get_object(mindless_root, hash, true) {
+                        new_files.push(Change {
+                            additions: blob_content.lines().count(),
+                            deletions: 0,
+                            mode: ChangeMode::CREATION,
+                            filename: path_to_blob,
+                        });
                     }
-                    TreeNode::Blob { name, hash } => {
-                        let path_to_blob = format!("{}{}", path_from_root, name);
-
-                        if let Some(blob_content) = get_object(mindless_root, hash, true) {
-                            new_files.push(Change {
-                                additions: blob_content.lines().count(),
-                                deletions: 0,
-                                mode: ChangeMode::CREATION,
-                                filename: path_to_blob,
-                            });
-                        }
-                    }
-                },
-            };
-        }
-    } else {
-        print_error_reading_tree();
-        return None;
+                }
+            },
+        };
     }
 
     let change_report = ChangeReport {

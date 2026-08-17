@@ -8,10 +8,8 @@ use colored::Colorize;
 
 use crate::{
     objects::{
-        object::{create_object, get_object},
-        tree::{create_tree, get_tree_diff},
-    },
-    util::{
+        object::{create_object, get_object}, tree::{create_tree, get_tree_diff, get_tree_or_exit},
+    }, util::{
         constants::{COMMIT_OBJECT_TYPE, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME},
         mindless::get_head_hash,
         output::print_error_reading_head,
@@ -36,16 +34,18 @@ pub fn create_commit(message: &str) {
     let mindless_root = get_root_or_exit();
     let nevermind_patterns = get_nevermind_patterns(&mindless_root);
     let tracked_files = get_tracked_files(None, &nevermind_patterns, &mindless_root);
-    let tree = create_tree(&mindless_root, &mindless_root, &tracked_files);
+    let tree_hash = create_tree(&mindless_root, &mindless_root, &tracked_files);
 
     // TODO: Add timestamp
-    let mut content = String::from(format!("tree {}\n", tree));
+    let mut content = String::from(format!("tree {}\n", tree_hash));
 
     if let Some(head_hash) = get_head_hash(&mindless_root) {
         content.push_str(&format!("parent {}\n", head_hash));
         let head_commit = get_head_commit_or_exit(&mindless_root, &head_hash);
+        let head_tree = get_tree_or_exit(&mindless_root, &head_commit.tree);
+        let tree = get_tree_or_exit(&mindless_root, &tree_hash);
 
-        if let Some(change_report) = get_tree_diff(&mindless_root, &head_commit.tree, &tree, "") {
+        if let Some(change_report) = get_tree_diff(&mindless_root, head_tree, tree, "") {
             println!("Changes saved to project.\n");
 
             if change_report.new_files.len() > 0 {
