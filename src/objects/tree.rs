@@ -62,7 +62,7 @@ impl fmt::Display for Change {
             f,
             "{}/{} {}",
             format!("+{}", self.additions).green().bold(),
-            format!("-{}", self.additions).red().bold(),
+            format!("-{}", self.deletions).red().bold(),
             self.filename
         )
     }
