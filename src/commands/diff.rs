@@ -1,9 +1,8 @@
+use std::process;
 use crate::{
     objects::{
-        commit::get_head_commit_or_exit,
-        tree::{Tree, TreeNode, create_tree_object},
-    },
-    util::{
+        commit::get_head_commit_or_exit, tree::{Tree, TreeNode, create_tree, create_tree_object, get_tree, get_tree_diff},
+    }, util::{
         mindless::get_head_hash,
         workspace::{get_nevermind_patterns, get_root_or_exit, get_tracked_files},
     },
@@ -34,11 +33,31 @@ pub fn diff() {
     if let Some(head_hash) = get_head_hash(&mindless_root) {
         let head_commit = get_head_commit_or_exit(&mindless_root, &head_hash);
 
+        let Some(head_tree) = get_tree(&mindless_root, &head_commit.tree) else {
+            println!("There was an error getting HEAD tree: {}", head_commit.tree);
+            process::exit(1);
+        };
+
         let nevermind_patterns = get_nevermind_patterns(&mindless_root);
         let tracked_files = get_tracked_files(None, &nevermind_patterns, &mindless_root);
 
-        let (hash, tree) = create_tree_object(&mindless_root, &mindless_root, &tracked_files);
-        test_print_tree(tree, "");
+        //let (_object, current_tree) = create_tree_object(&mindless_root, &mindless_root, &tracked_files);
+        let tree = create_tree(&mindless_root, &mindless_root, &tracked_files);
+        let (hash, current_tree) = create_tree_object(&mindless_root, &mindless_root, &tracked_files);
+
+        // test_print_tree(tree, "");
+        //
+        //println!("{}, {}", head_commit.tree, _object.get_hash());
+
+        let Some(change_report) = get_tree_diff(&mindless_root, head_tree, current_tree, "") else {
+            println!("Failed to generate diff.");
+            process::exit(1);
+        };
+
+        println!("actual: {} {} {}", change_report.changed_files.len(), change_report.deleted_files.len(), change_report.new_files.len());
+
+        //println!("{change_report}");
+
         // TODO: Need to refactor to make create_tree return a Tree object, instead of a hash.
         // It should create a tree object without creating a tree file
         //

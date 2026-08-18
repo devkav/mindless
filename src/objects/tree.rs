@@ -6,7 +6,6 @@ use std::{
 };
 
 use colored::Colorize;
-use rand::Rng;
 use similar::{ChangeTag, TextDiff};
 
 use crate::{
@@ -78,7 +77,7 @@ pub fn create_tree_object(
     path_prefix: &PathBuf,
     mindless_root: &PathBuf,
     tracked_files: &Vec<PathBuf>,
-) -> (String, Tree) {
+) -> (Object, Tree) {
     let mut visited = HashSet::new();
     let mut children: HashMap<String, TreeNode> = HashMap::new();
 
@@ -110,8 +109,9 @@ pub fn create_tree_object(
                 if !visited.contains(&current_object_str) {
                     visited.insert(current_object_str.clone());
 
-                    let (current_tree_hash, current_tree) =
+                    let (current_tree_object, current_tree) =
                         create_tree_object(&current_object_path, &mindless_root, tracked_files);
+                    let current_tree_hash = current_tree_object.get_hash();
 
                     children.insert(
                         current_tree_hash.clone(),
@@ -145,10 +145,49 @@ pub fn create_tree_object(
         }
     }
 
-    // TODO: Remove rand crate after refactor
-    let tree_hash = format!("my_random_hash_{}", rand::rng().next_u32()); // TODO!
+    let mut blob_names: Vec<(String, String)> = Vec::new();
+    let mut sub_tree_names: Vec<(String, String)> = Vec::new();
 
-    return (tree_hash, Tree { children });
+    for (hash, object) in &children {
+        let (name, objects) = match object {
+            TreeNode::Blob { name, hash: _} => (name, &mut blob_names),
+            TreeNode::SubTree { name, hash: _, tree: _} => (name, &mut sub_tree_names)
+        };
+
+        objects.push((name.clone(), hash.clone()));
+    }
+
+    blob_names.sort_by(|(name_a, _hash_a), (name_b, _hash_b)| name_a.cmp(name_b));
+    sub_tree_names.sort_by(|(name_a, _hash_a), (name_b, _hash_b)| name_a.cmp(name_b));
+
+    let mut content = String::new();
+
+    for (file_name, blob_hash) in blob_names {
+        let current_line = format!(
+            "{} {} {}\n",
+            ObjectType::BLOB.as_str(),
+            blob_hash,
+            file_name
+        );
+        content.push_str(&current_line)
+    }
+
+    for (file_name, tree_hash) in sub_tree_names {
+        let current_line = format!(
+            "{} {} {}\n",
+            ObjectType::TREE.as_str(),
+            tree_hash,
+            file_name
+        );
+        content.push_str(&current_line)
+    }
+
+    let object = Object {
+        object_type: ObjectType::TREE,
+        content: content.as_bytes().to_vec(),
+    };
+
+    return (object, Tree { children });
 }
 
 pub fn create_tree(

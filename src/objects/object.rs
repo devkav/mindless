@@ -77,6 +77,19 @@ pub fn create_object_file(object: &Object, mindless_root: &PathBuf) -> String {
     return object_hash;
 }
 
+pub fn object_exists(mindless_root: &PathBuf, object_hash: &str) -> bool {
+    let object_dir_name = &object_hash[0..2];
+    let object_file_name = &object_hash[2..];
+
+    let object_file = mindless_root
+        .join(MINDLESS_DIR_NAME)
+        .join(OBJECTS_DIR_NAME)
+        .join(object_dir_name)
+        .join(object_file_name);
+
+    return object_file.exists();
+}
+
 pub fn get_object(mindless_root: &PathBuf, object_hash: &str, remove_type: bool) -> Option<String> {
     let object_dir_name = &object_hash[0..2];
     let object_file_name = &object_hash[2..];
