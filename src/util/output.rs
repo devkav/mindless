@@ -4,7 +4,7 @@ pub fn print_project_not_found() {
     println!("mindless project not found.");
     println!(
         "Use {} to start a new project.",
-        "mindless init\n".blue().bold()
+        "mindless new\n".blue().bold()
     );
 }
 

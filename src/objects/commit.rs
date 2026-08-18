@@ -8,9 +8,11 @@ use colored::Colorize;
 
 use crate::{
     objects::{
-        object::{create_object, get_object}, tree::{create_tree, get_tree_diff, get_tree_or_exit},
-    }, util::{
-        constants::{COMMIT_OBJECT_TYPE, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME},
+        object::{Object, ObjectType, create_object_file, get_object},
+        tree::{create_tree, get_tree_diff, get_tree_or_exit},
+    },
+    util::{
+        constants::{HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME},
         mindless::get_head_hash,
         output::print_error_reading_head,
         workspace::{get_nevermind_patterns, get_root_or_exit, get_tracked_files},
@@ -80,14 +82,11 @@ pub fn create_commit(message: &str) {
     }
 
     content.push_str(&format!("\n{}", message));
-
-    let content_bytes = content.as_bytes();
-
-    let header = format!("{} {}\0", COMMIT_OBJECT_TYPE, content.len());
-    let mut complete_bytes = header.into_bytes();
-    complete_bytes.extend(content_bytes);
-
-    let commit_hash = create_object(&complete_bytes, &mindless_root);
+    let object = Object {
+        object_type: ObjectType::COMMIT,
+        content: content.as_bytes().to_vec(),
+    };
+    let commit_hash = create_object_file(&object, &mindless_root);
 
     let head_file = mindless_root.join(MINDLESS_DIR_NAME).join(HEAD_FILE_NAME);
     let head_content = read_to_string(head_file).expect("Something went wrong while reading HEAD");

@@ -10,20 +10,54 @@ use crate::util::{
     files::decompress_file,
 };
 
-pub fn get_hash(content: &[u8]) -> String {
-    let hash = Sha256::digest(content);
-    let hash_hex = hex::encode(hash);
-
-    return hash_hex;
+pub enum ObjectType {
+    COMMIT,
+    TREE,
+    BLOB,
 }
 
-pub fn create_object(content_b: &Vec<u8>, mindless_root: &PathBuf) -> String {
-    let mut compressed_buf = vec![0u8; compress_bound(content_b.len())];
-    let (compressed, _) = compress_slice(&mut compressed_buf, &content_b, DeflateConfig::default());
+impl ObjectType {
+    pub fn as_str(&self) -> String {
+        match self {
+            ObjectType::COMMIT => String::from("commit"),
+            ObjectType::TREE => String::from("tree"),
+            ObjectType::BLOB => String::from("blob"),
+        }
+    }
+}
 
-    let complete_hash = get_hash(&content_b);
-    let object_dir_name = &complete_hash[0..2];
-    let file_name = &complete_hash[2..];
+pub struct Object {
+    pub object_type: ObjectType,
+    pub content: Vec<u8>,
+}
+
+impl Object {
+    pub fn get_hash(&self) -> String {
+        let hash = Sha256::digest(self.get_bytes());
+        let hash_hex = hex::encode(hash);
+
+        return hash_hex;
+    }
+
+    pub fn get_bytes(&self) -> Vec<u8> {
+        let header = format!("{} {}\0", self.object_type.as_str(), self.content.len());
+        let mut complete_bytes = header.into_bytes();
+        complete_bytes.extend(&self.content);
+
+        return complete_bytes;
+    }
+}
+
+pub fn create_object_file(object: &Object, mindless_root: &PathBuf) -> String {
+    let object_bytes = object.get_bytes();
+    let object_hash = object.get_hash();
+
+    let mut compressed_buf = vec![0u8; compress_bound(object_bytes.len())];
+    let (compressed, _) =
+        compress_slice(&mut compressed_buf, &object_bytes, DeflateConfig::default());
+
+    let object_dir_name = &object_hash[0..2];
+    let file_name = &object_hash[2..];
 
     let object_dir_path = mindless_root
         .join(MINDLESS_DIR_NAME)
@@ -40,7 +74,7 @@ pub fn create_object(content_b: &Vec<u8>, mindless_root: &PathBuf) -> String {
 
     // TODO: Add some pretty printing
 
-    return complete_hash;
+    return object_hash;
 }
 
 pub fn get_object(mindless_root: &PathBuf, object_hash: &str, remove_type: bool) -> Option<String> {

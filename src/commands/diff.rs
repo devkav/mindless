@@ -1,5 +1,12 @@
 use crate::{
-    objects::{commit::get_head_commit_or_exit, tree::{Tree, TreeNode, create_tree_object}}, util::{mindless::get_head_hash, workspace::{get_nevermind_patterns, get_root_or_exit, get_tracked_files}},
+    objects::{
+        commit::get_head_commit_or_exit,
+        tree::{Tree, TreeNode, create_tree_object},
+    },
+    util::{
+        mindless::get_head_hash,
+        workspace::{get_nevermind_patterns, get_root_or_exit, get_tracked_files},
+    },
 };
 
 pub fn test_print_tree(tree: Tree, indent: &str) {
@@ -10,7 +17,7 @@ pub fn test_print_tree(tree: Tree, indent: &str) {
 
                 println!("{indent}{name} {hash}");
                 test_print_tree(tree, &child_indent);
-            },
+            }
             TreeNode::Blob { name, hash } => {
                 println!("{indent}{name} {hash}");
             }

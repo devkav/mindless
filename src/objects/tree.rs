@@ -2,7 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     fmt,
     path::PathBuf,
-    process
+    process,
 };
 
 use colored::Colorize;
@@ -11,13 +11,10 @@ use similar::{ChangeTag, TextDiff};
 
 use crate::{
     objects::{
-        blob::create_blob,
-        object::{create_object, get_object},
+        blob::{create_blob_file, create_blob_object},
+        object::{Object, ObjectType, create_object_file, get_object},
     },
-    util::{
-        constants::{BLOB_OBJECT_TYPE, TREE_OBJECT_TYPE},
-        output::print_error_reading_tree,
-    },
+    util::output::print_error_reading_tree,
 };
 
 pub enum TreeNode {
@@ -81,10 +78,9 @@ pub fn create_tree_object(
     path_prefix: &PathBuf,
     mindless_root: &PathBuf,
     tracked_files: &Vec<PathBuf>,
-) -> (String, Tree)
-{
+) -> (String, Tree) {
     let mut visited = HashSet::new();
-    let mut children: HashMap<String, TreeNode>= HashMap::new();
+    let mut children: HashMap<String, TreeNode> = HashMap::new();
 
     for file in tracked_files {
         if !file.starts_with(path_prefix) {
@@ -114,32 +110,36 @@ pub fn create_tree_object(
                 if !visited.contains(&current_object_str) {
                     visited.insert(current_object_str.clone());
 
-                    let (current_tree_hash, current_tree) = create_tree_object(&current_object_path, &mindless_root, tracked_files);
+                    let (current_tree_hash, current_tree) =
+                        create_tree_object(&current_object_path, &mindless_root, tracked_files);
 
                     children.insert(
                         current_tree_hash.clone(),
                         TreeNode::SubTree {
                             name: current_object_name_str,
                             hash: current_tree_hash.clone(),
-                            tree: current_tree
-                        }
+                            tree: current_tree,
+                        },
                     );
                 }
             } else {
                 if let Some(file_name) = current_object_path.file_name() {
-                    // TODO: Remove rand crate after refactor
-                    let blob_hash = format!("my_random_hash_{}", rand::rng().next_u32()); // TODO! Need to refactor create_blob to not create a file
-                    let file_name_str = file_name.to_str().unwrap().to_string();
+                    if let Some(blob_object) = create_blob_object(&current_object_path) {
+                        let blob_hash = blob_object.get_hash();
+                        let file_name_str = file_name.to_str().unwrap().to_string();
 
-                    children.insert(
-                        blob_hash.clone(),
-                        TreeNode::Blob {
-                            name: file_name_str,
-                            hash: blob_hash
-                        }
-                    );
+                        children.insert(
+                            blob_hash.clone(),
+                            TreeNode::Blob {
+                                name: file_name_str,
+                                hash: blob_hash,
+                            },
+                        );
+                    } else {
+                        println!("There was an error creating blob for file {current_object_str}");
+                    }
                 } else {
-                    println!("There was an error creating blob for file {current_object_str}");
+                    println!("There was an error reading file name for {current_object_str}");
                 }
             }
         }
@@ -147,6 +147,7 @@ pub fn create_tree_object(
 
     // TODO: Remove rand crate after refactor
     let tree_hash = format!("my_random_hash_{}", rand::rng().next_u32()); // TODO!
+
     return (tree_hash, Tree { children });
 }
 
@@ -191,7 +192,7 @@ pub fn create_tree(
                 // So techinically we don't need to check when the file was last changed
                 // However, I think we should to avoid any redundant compressions
 
-                if let Some(blob_hash) = create_blob(&file, mindless_root) {
+                if let Some(blob_hash) = create_blob_file(&file, mindless_root) {
                     let file_name = file
                         .file_name()
                         .expect("Something went wrong while getting filename")
@@ -210,22 +211,31 @@ pub fn create_tree(
     let mut content = String::new();
 
     for (file_name, blob_hash) in blob_hashes {
-        let current_line = format!("{} {} {}\n", BLOB_OBJECT_TYPE, blob_hash, file_name);
+        let current_line = format!(
+            "{} {} {}\n",
+            ObjectType::BLOB.as_str(),
+            blob_hash,
+            file_name
+        );
         content.push_str(&current_line)
     }
 
     for (file_name, tree_hash) in tree_hashes {
-        let current_line = format!("{} {} {}\n", TREE_OBJECT_TYPE, tree_hash, file_name);
+        let current_line = format!(
+            "{} {} {}\n",
+            ObjectType::TREE.as_str(),
+            tree_hash,
+            file_name
+        );
         content.push_str(&current_line)
     }
 
-    let content_bytes = content.as_bytes();
+    let object = Object {
+        object_type: ObjectType::TREE,
+        content: content.as_bytes().to_vec(),
+    };
 
-    let header = format!("{} {}\0", TREE_OBJECT_TYPE, content.len());
-    let mut complete_bytes = header.into_bytes();
-    complete_bytes.extend(content_bytes);
-
-    return create_object(&complete_bytes, &mindless_root);
+    return create_object_file(&object, &mindless_root);
 }
 
 pub fn get_tree(mindless_root: &PathBuf, hash: &str) -> Option<Tree> {
@@ -247,7 +257,7 @@ pub fn get_tree(mindless_root: &PathBuf, hash: &str) -> Option<Tree> {
             let child_hash = tokens[1];
             let child_name = tokens[2];
 
-            if child_type != TREE_OBJECT_TYPE && child_type != BLOB_OBJECT_TYPE {
+            if child_type != ObjectType::TREE.as_str() && child_type != ObjectType::BLOB.as_str() {
                 println!(
                     "{}",
                     format!("Invalid type {} found in tree. Skipping...", child_type).yellow()
@@ -255,7 +265,7 @@ pub fn get_tree(mindless_root: &PathBuf, hash: &str) -> Option<Tree> {
                 continue;
             }
 
-            if child_type == TREE_OBJECT_TYPE {
+            if child_type == ObjectType::TREE.as_str() {
                 if let Some(child_tree) = get_tree(&mindless_root, child_hash) {
                     children.insert(
                         child_name.to_string(),
@@ -283,7 +293,6 @@ pub fn get_tree(mindless_root: &PathBuf, hash: &str) -> Option<Tree> {
         return None;
     }
 }
-
 
 pub fn get_tree_or_exit(mindless_root: &PathBuf, hash: &str) -> Tree {
     let Some(tree) = get_tree(mindless_root, hash) else {
@@ -321,12 +330,9 @@ pub fn get_tree_diff(
                             let prev_tree = get_tree_or_exit(mindless_root, prev_hash);
                             let current_tree = get_tree_or_exit(mindless_root, current_hash);
 
-                            if let Some(nested_change_report) = get_tree_diff(
-                                mindless_root,
-                                prev_tree,
-                                current_tree,
-                                &path_to_tree,
-                            ) {
+                            if let Some(nested_change_report) =
+                                get_tree_diff(mindless_root, prev_tree, current_tree, &path_to_tree)
+                            {
                                 new_files.extend(nested_change_report.new_files);
                                 deleted_files.extend(nested_change_report.deleted_files);
                                 changed_files.extend(nested_change_report.changed_files);
@@ -336,8 +342,7 @@ pub fn get_tree_diff(
                             let path_to_blob = format!("{}{}", path_from_root, name);
 
                             if let Some(prev_blob) = get_object(mindless_root, prev_hash, true)
-                                && let Some(blob) =
-                                    get_object(mindless_root, current_hash, true)
+                                && let Some(blob) = get_object(mindless_root, current_hash, true)
                             {
                                 let diff = TextDiff::from_lines(&prev_blob, &blob);
                                 let mut additions = 0;
@@ -379,9 +384,7 @@ pub fn get_tree_diff(
                             TreeNode::Blob { name, hash } => {
                                 let path_to_blob = format!("{}{}", path_to_parent, name);
 
-                                if let Some(blob_content) =
-                                    get_object(mindless_root, &hash, true)
-                                {
+                                if let Some(blob_content) = get_object(mindless_root, &hash, true) {
                                     new_files.push(Change {
                                         additions: blob_content.lines().count(),
                                         deletions: 0,

@@ -9,8 +9,4 @@ pub const MAIN_BRANCH_NAME: &str = "main";
 
 pub const EMPTY_BRANCH: &str = "EMPTY";
 
-pub const BLOB_OBJECT_TYPE: &str = "blob";
-pub const TREE_OBJECT_TYPE: &str = "tree";
-pub const COMMIT_OBJECT_TYPE: &str = "commit";
-
 pub const HEAD_REF_TYPE: &str = "head";
