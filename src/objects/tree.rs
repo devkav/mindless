@@ -77,7 +77,9 @@ pub struct ChangeReport {
 
 impl ChangeReport {
     pub fn is_empty(&self) -> bool {
-        return self.new_files.is_empty() && self.deleted_files.is_empty() && self.changed_files.is_empty();
+        return self.new_files.is_empty()
+            && self.deleted_files.is_empty()
+            && self.changed_files.is_empty();
     }
 }
 
