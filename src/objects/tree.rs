@@ -54,7 +54,7 @@ impl fmt::Display for Change {
             f,
             "{}/{} {}",
             format!("+{}", self.additions).green().bold(),
-            format!("-{}", self.additions).red().bold(),
+            format!("-{}", self.deletions).red().bold(),
             self.filename
         )
     }
@@ -189,7 +189,7 @@ pub fn get_tree_diff(mindless_root: &PathBuf, parent: &str, child: &str, path_fr
     let mut deleted_files: Vec<Change> = Vec::new();
     let mut changed_files: Vec<Change> = Vec::new();
 
-    // TODO: Need to cover both new files and deleted files
+    // TODO: Cover Deleted files
     // TODO: Make work for initial commits
 
     if let Some(parent_object) = get_tree(mindless_root, parent) && 
