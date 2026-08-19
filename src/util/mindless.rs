@@ -1,12 +1,12 @@
-use std::{fs::read_to_string, process, path::PathBuf};
+use std::{fs::read_to_string, path::PathBuf, process};
 
-use crate::util::{constants::{EMPTY_BRANCH, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME}, output::print_error_reading_head};
+use crate::util::{
+    constants::{EMPTY_BRANCH, HEAD_FILE_NAME, MINDLESS_DIR_NAME, REFS_DIR_NAME},
+    output::print_error_reading_head,
+};
 
-
-pub fn get_head(mindless_root: &PathBuf) -> Option<String> {
-    let head_file = mindless_root
-        .join(MINDLESS_DIR_NAME)
-        .join(HEAD_FILE_NAME);
+pub fn get_head_hash(mindless_root: &PathBuf) -> Option<String> {
+    let head_file = mindless_root.join(MINDLESS_DIR_NAME).join(HEAD_FILE_NAME);
     let head_content = read_to_string(head_file).expect("Something went wrong while reading HEAD");
     let tokens: Vec<&str> = head_content.split(" ").collect();
 

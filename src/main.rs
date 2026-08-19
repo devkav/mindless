@@ -1,14 +1,14 @@
-mod util;
 mod commands;
 mod objects;
+mod util;
 
 use clap::{CommandFactory, Parser, Subcommand};
-use commands::save::save;
-use commands::new::new;
+use commands::changes::changes;
 use commands::history::history;
+use commands::new::new;
+use commands::save::save;
 
 use crate::util::files::decompress_file;
-
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -20,17 +20,15 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// Debug tool to decompress files
-    DbgDecompress {
-        path: String,
-    },
+    DbgDecompress { path: String },
     /// Save the state of the current workspace
-    Save {
-        message: String
-    },
+    Save { message: String },
     /// Create a new mindless project
     New {},
     /// View change history of the current workspace
     History {},
+    /// View file changes
+    Changes {},
 }
 
 fn main() {
@@ -44,6 +42,7 @@ fn main() {
         Some(Commands::Save { message }) => save(message),
         Some(Commands::New {}) => new(),
         Some(Commands::History {}) => history(),
+        Some(Commands::Changes {}) => changes(),
         None => {
             let _ = Cli::command().print_help();
         }
